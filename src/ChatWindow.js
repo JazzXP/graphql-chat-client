@@ -1,44 +1,52 @@
-import React, { useEffect } from 'react';
-import gql from 'graphql-tag';
-import { useQuery, useSubscription } from '@apollo/react-hooks';
+import React, { useEffect } from "react";
+import gql from "graphql-tag";
+import { useQuery } from "@apollo/react-hooks";
 
 const INITIAL_CHAT = gql`
-query {
+  query {
     posts {
-        author
-        comment
+      author
+      comment
     }
-}
+  }
 `;
 
 const SUBSCRIPTION = gql`
-subscription {
+  subscription {
     postAdded {
-        author
-        comment
+      author
+      comment
     }
-}
+  }
 `;
 
-export default (props) => {
-    const { loading, error, data } = useSubscription(SUBSCRIPTION);
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p>Error :(</p>;
-    let newData = [];
+export default () => {
+  const { subscribeToMore, loading, error, data } = useQuery(INITIAL_CHAT);
 
-    useEffect(() => {
-        if (!loading) {
-            newData.push(data.postAdded)
+  useEffect(
+    () =>
+      subscribeToMore({
+        document: SUBSCRIPTION,
+        updateQuery: (prev, { subscriptionData }) => {
+          if (!subscriptionData.data) return prev;
+          const newFeedItem = subscriptionData.data.postAdded;
+          console.log(newFeedItem);
+          return {
+            posts: [...prev.posts, newFeedItem]
+          };
         }
-    }, [loading, data, newData])
+      }),
+    [subscribeToMore]
+  );
 
-    return (
-        <div className="ChatWindow">
-            { newData.map(({ author, comment }, idx) => (
-                <div key={idx}>
-                    {`${author}: ${comment}`}
-                </div>
-            ))}
-        </div>
-    )
-}
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error</p>;
+
+  return (
+    <div>
+      {data.posts.map((val, idx) => (
+        <div key={idx}>{`${val.author}:${val.comment}`}</div>
+      ))}
+    </div>
+  );
+};
